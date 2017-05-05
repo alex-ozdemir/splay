@@ -1066,18 +1066,77 @@ void benchmark_bu_complete_rules(usize r_height, usize n, usize times)
               << '\t' << time_per_op << std::endl;
 }
 
+void benchmark_original_td(usize n, usize times)
+{
+    tree_set<usize> general = full(n);
+    usize n_items = n_full(n);
+
+    std::string rulestr =
+        "L  OXOXX "
+        "R  OOXXX "
+        "LL OXOXOXX "
+        "LR OOXXOXX "
+        "RL OOXXOXX "
+        "RR OOOXXXX";
+
+    ruleset normal_rules = make_ruleset(rulestr);
+    pcg32_random_t rng = {0, 0};
+
+    double start = omp_get_wtime();
+    for (usize i = 0; i < times; ++i) {
+        usize t = pcg32_random_r(&rng) % n_items + 1;
+        general.td_splay_gen(t, normal_rules);
+        assert(general.root->data == t);
+    }
+    double end = omp_get_wtime();
+    double time_per_op = (end - start) / times;
+    std::cout << "O-TD\t" << 2 << '\t' << n << '\t' << (end-start)
+              << '\t' << time_per_op << std::endl;
+}
+
+void benchmark_original_bu(usize n, usize times)
+{
+    tree_set<usize> general = full(n);
+    usize n_items = n_full(n);
+
+    std::string rulestr =
+        "L  OXOXX "
+        "R  OOXXX "
+        "LL OXOXOXX "
+        "LR OOXXOXX "
+        "RL OOXXOXX "
+        "RR OOOXXXX";
+
+    ruleset normal_rules = make_ruleset(rulestr);
+    ruleset inverse_rules = make_inverted_ruleset(rulestr);
+    pcg32_random_t rng = {0, 0};
+
+    double start = omp_get_wtime();
+    for (usize i = 0; i < times; ++i) {
+        usize t = pcg32_random_r(&rng) % n_items + 1;
+        general.bu_splay_gen(t, normal_rules, inverse_rules);
+        assert(general.root->data == t);
+    }
+    double end = omp_get_wtime();
+    double time_per_op = (end - start) / times;
+    std::cout << "O-BU\t" << 2 << '\t' << n << '\t' << (end-start)
+              << '\t' << time_per_op << std::endl;
+}
+
 void benchmarks() {
     int n = 14;
-    usize t = 1 << 20;
+    usize t = 1 << 22;
     std::cout << "algorithm\trule height\tstarting tree height\t"
                  "total seconds\tseconds per splay" << std::endl;
     int n_benchmarks = 2 * (n+4 - 2 + 1);
     int i = 0;
+    benchmark_original_td(n, t);
     for (int d = 2; d <= n+4; d++) {
         ++i;
         benchmark_td_complete_rules(d, n, t);
         std::cerr << "Benchmark " << i << '/' << n_benchmarks << std::endl;
     }
+    benchmark_original_bu(n, t);
     for (int d = 2; d <= n+4; d++) {
         ++i;
         benchmark_bu_complete_rules(d, n, t);
